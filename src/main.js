@@ -133,7 +133,8 @@ async function boot() {
   world.add(props.group);
   if (props.overlay) pipeline.overlay.add(props.overlay);
   // the towns: buildings, their landing pads, and what the broom bumps into
-  const town = (game.town = await (townLoad || Town.load(renderer)));
+  setLoad(0.85, 'loading the villages…');
+  const town = (game.town = await (townLoad || Town.load(renderer, './assets', { sequential: TOUCH })));
   world.add(town.group);
   town.bakeShadows();
   // hidden places and their treasures (their models load later, as the rider comes near)
@@ -512,12 +513,23 @@ game.shot = async (name = 'shot', w = 1920, h = 1080, steps = 2, dt = 1 / 60) =>
   }
 };
 
-// a copy of the island kept on the device: the second visit (and a flight with no signal) loads from it
-if ('serviceWorker' in navigator && !params.has('nosw') && (params.has('sw') || !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname))) {
-  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+// Older releases installed a cache worker that can surface failed requests as a FetchEvent error.
+// Unregister only this app's worker. Existing localStorage saves are deliberately left untouched.
+async function retireOldCache() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration(new URL('./', location.href).href);
+      if (registration && registration.scope === new URL('./', location.href).href) await registration.unregister();
+    }
+    if ('caches' in window) {
+      for (const key of await caches.keys()) if (key.startsWith('petalwake-')) await caches.delete(key);
+    }
+  } catch (error) { console.warn('Cache cleanup:', error); }
 }
-
+retireOldCache();
+$('retryLoad').addEventListener('click', async () => { await retireOldCache(); location.reload(); });
 boot().catch((e) => {
   console.error(e);
-  $('loadStatus').textContent = `failed to load: ${e.message}`;
+  $('loadStatus').textContent = `Loading stopped. Check your connection and try again. (${e.message})`;
+  $('retryLoad').hidden = false;
 });

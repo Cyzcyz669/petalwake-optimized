@@ -8,6 +8,7 @@
 // It also answers two questions for the rest of the game: where the rider can land (pads), and how
 // high the roofs are at a point (heightAt), which is what the broom collides with.
 import * as THREE from 'three';
+import { loadBinary, loadJson } from '../core/resource.js';
 import { U, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, WIND, SHADOW, TOWN_SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
@@ -19,25 +20,27 @@ const NEAR = 135, MID = 560;       // metres: beyond NEAR the finest detail goes
 const MAX_TOWNS = 2;               // shadow maps the world shaders can read
 
 export class Town {
-  static async load(renderer, base = './assets') {
-    let index;
-    try { index = await fetch(`${base}/town/index.json`).then((r) => (r.ok ? r.json() : null)); } catch { index = null; }
+  static async load(renderer, base = './assets', { sequential = false } = {}) {
+    const index = await loadJson(`${base}/town/index.json`);
     const town = new Town(renderer);
     // the ground masks (paving, cleared ground) belong to the terrain's fit and stand even with no buildings
-    let masks = null;
-    try { masks = await fetch(`${base}/town/masks.json`).then((r) => (r.ok ? r.json() : null)); } catch { masks = null; }
+    const masks = await loadJson(`${base}/town/masks.json`);
     if (masks) await Promise.all(Object.keys(masks).slice(0, MAX_TOWNS).map(async (id, i) => {
       const m = masks[id];
       U[`uTownMask${i}`].value = dataTex(await loadImage(`${base}/town/${m.file}`), { mips: true, aniso: 4 });
       U[`uTownRect${i}`].value.set(m.x0, m.z0, 1 / m.w, 1 / m.h);
     }));
     if (!index || !index.towns.length) return town;
-    const [mats, tiles] = await Promise.all([materialArrays(`${base}/town/tex`), fetch(`${base}/town/tex/materials.json`).then((r) => r.json())]);
+    const [mats, tiles] = await Promise.all([materialArrays(`${base}/town/tex`), loadJson(`${base}/town/tex/materials.json`)]);
     town._material(mats, tiles);
-    await Promise.all(index.towns.map(async (t) => {
-      const [meta, buf] = await Promise.all([fetch(`${base}/town/${t.id}.json`).then((r) => r.json()), fetch(`${base}/town/${t.id}.bin`).then((r) => r.arrayBuffer())]);
+    const loadTown = async (t) => {
+      const [meta, buf] = await Promise.all([loadJson(`${base}/town/${t.id}.json`), loadBinary(`${base}/town/${t.id}.bin`)]);
+      if (t.bytes && buf.byteLength !== t.bytes) throw new Error(`${t.id} model data is incomplete`);
       town._add(meta, buf);
-    }));
+    };
+    // Limit peak transfer/decompression memory on touch devices without changing the models.
+    if (sequential) { for (const t of index.towns) await loadTown(t); }
+    else await Promise.all(index.towns.map(loadTown));
     return town;
   }
 

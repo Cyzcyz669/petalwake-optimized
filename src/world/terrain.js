@@ -1,5 +1,6 @@
 // Terrain: baked heightfield + CDLOD quadtree mesh + the material that paints meadow, cliff, beach.
 import * as THREE from 'three';
+import { loadBinary, loadBlob, loadJson } from '../core/resource.js';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, MEADOW, SHADOW, STRIP, TOWN_SHADOW, TOWN_MASK } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
@@ -16,9 +17,7 @@ const MAX_NODES = 2600;
 // createImageBitmap decodes off the main thread and, unlike img.decode(), does not wait on the
 // page's rendering loop (which stalls in a hidden or throttled tab)
 export async function loadImage(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${url}: ${res.status}`);
-  return createImageBitmap(await res.blob(), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+  return createImageBitmap(await loadBlob(url), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
 }
 
 export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THREE.ClampToEdgeWrapping } = {}) {
@@ -47,7 +46,7 @@ function pixels(img, size) {
 
 /** Stack material images into a texture array. */
 export async function materialArrays(base) {
-  const meta = await (await fetch(`${base}/materials.json`)).json();
+  const meta = await loadJson(`${base}/materials.json`);
   const S = meta.size;
   const L = meta.order.length;
   const col = new Uint8Array(S * S * 4 * L);
@@ -120,9 +119,9 @@ export function makeNoiseTexture() {
 
 export class Terrain {
   static async load(renderer, base = './assets', { sequential = false } = {}) {
-    const meta = await (await fetch(`${base}/terrain/meta.json`)).json();
+    const meta = await loadJson(`${base}/terrain/meta.json`);
     const jobs = [
-      () => fetch(`${base}/terrain/height.u16`).then((r) => { if (!r.ok) throw new Error(`height.u16: ${r.status}`); return r.arrayBuffer(); }),
+      () => loadBinary(`${base}/terrain/height.u16`),
       () => loadImage(`${base}/terrain/splat.png`),
       () => loadImage(`${base}/terrain/light.png`),
       () => loadImage(`${base}/terrain/tint.png`),
@@ -131,6 +130,7 @@ export class Terrain {
     const results = sequential ? [] : await Promise.all(jobs.map((job) => job()));
     if (sequential) for (const job of jobs) results.push(await job());
     const [buf, splatImg, lightImg, tintImg, mats] = results;
+    if (buf.byteLength !== meta.n * meta.n * 2) throw new Error('Terrain height data is incomplete');
     return new Terrain(renderer, meta, new Uint16Array(buf), splatImg, lightImg, tintImg, mats);
   }
 
