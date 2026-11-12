@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>Shadow framebuffer test</title>
+<script type="importmap">{"imports":{"three":"../vendor/three/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+try {
+  const r=new THREE.WebGLRenderer({antialias:false}); r.setSize(32,32);
+  const scene=new THREE.Scene(), camera=new THREE.OrthographicCamera(-1,1,1,-1,0.1,10);
+  camera.position.z=3; scene.add(new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial()));
+  function depthResult(format) {
+    const depth=new THREE.DepthTexture(32,32,THREE.FloatType); depth.minFilter=depth.magFilter=THREE.NearestFilter;
+    const target=new THREE.WebGLRenderTarget(32,32,{format, depthTexture:depth,depthBuffer:true,minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter});
+    r.setRenderTarget(target); const gl=r.getContext(); const status=gl.checkFramebufferStatus(gl.FRAMEBUFFER); r.clear(); r.render(scene,camera); r.setRenderTarget(null);
+    const quadScene=new THREE.Scene(), quadCamera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+    quadScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:{depth:{value:depth}},vertexShader:'varying vec2 uv0; void main(){uv0=uv;gl_Position=vec4(position,1.0);}',fragmentShader:'varying vec2 uv0; uniform sampler2D depth; void main(){float d=texture2D(depth,uv0).r; gl_FragColor=vec4(d,d,d,1.0);}',depthTest:false,depthWrite:false})));
+    const out=new THREE.WebGLRenderTarget(32,32,{depthBuffer:false});r.setRenderTarget(out);r.render(quadScene,quadCamera);r.setRenderTarget(null);const bytes=new Uint8Array(32*32*4);r.readRenderTargetPixels(out,0,0,32,32,bytes);const err=gl.getError();return {status,bytes:Array.from(bytes),err};
+  }
+  const rgba=depthResult(THREE.RGBAFormat), red=depthResult(THREE.RedFormat);
+  window.testResult={complete:rgba.status===r.getContext().FRAMEBUFFER_COMPLETE&&red.status===r.getContext().FRAMEBUFFER_COMPLETE, equal:rgba.bytes.every((v,i)=>v===red.bytes[i]),error:rgba.err||red.err,center:red.bytes[(16*32+16)*4],edge:red.bytes[0]};
+} catch(e) { window.testResult={exception:String(e)}; }
+</script>

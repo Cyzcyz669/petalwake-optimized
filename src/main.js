@@ -50,6 +50,17 @@ const game = {
   time: 0, paused: false, ready: false, state: 'title', fov: 64,
 };
 window.PW = game;
+// A context loss cannot restore released CPU-side texture copies. Explain it instead of leaving
+// a black or frozen frame; a user-initiated reload reconstructs the scene and keeps local saves.
+canvas.addEventListener('webglcontextlost', () => {
+  game.gpuLost = true;
+  const title = $('title');
+  title.classList.remove('gone'); title.classList.add('loading');
+  $('start').hidden = true; $('keys').hidden = true; $('records').hidden = true;
+  $('loadStatus').hidden = false;
+  $('loadStatus').textContent = 'Graphics stopped on this device. Close other tabs, then try again.';
+  $('retryLoad').hidden = false;
+});
 
 // Use the original high-quality defaults on every device; overrides remain available.
 const TOUCH = isTouch(params);
@@ -116,6 +127,7 @@ async function boot() {
   const clouds = (game.clouds = new CloudBaker(renderer));
   clouds.begin();
   while (!clouds.done) {
+    if (game.gpuLost) return;
     setLoad(0.45 + 0.4 * clouds.step(2), 'painting the sky…');
     await tick();
   }
@@ -156,7 +168,7 @@ async function boot() {
   pipeline.overlay.add(fx.group);
   // the shore: tide lines, what clings to the rocks, and the crabs. Decoration only, so it is loaded
   // on its own: if the module or its assets fail, the game goes on without it.
-  const shore = (game.shore = await import('./world/shore.js').then((m) => m.Shore.load(renderer, terrain)).catch((e) => (console.error(e), null)));
+  const shore = (game.shore = await import('./world/shore.js').then((m) => m.Shore.load(renderer, terrain)).catch((e) => (console.error(e), game.shoreError = e, null)));
   if (shore) world.add(shore.attach({ camera, fx, water, town, overlay: pipeline.overlay }).group);
   const seeds = (game.seeds = new Seeds(terrain, terrain.meta));
   pipeline.overlay.add(seeds.group);
@@ -180,9 +192,14 @@ async function boot() {
   if (TOUCH) $('keys').innerHTML = '<div><b>left thumb</b> steer · drag anywhere</div><div><b>gust</b> hold to speed up</div><div><b>ease</b> hold to slow</div><div><b>land</b> appears by a tower</div><div>↺ race a leg again · ✉ postcard · ⟲ tilt steering</div>';
   else $('keys').insertAdjacentHTML('beforeend', '<div><kbd>R</kbd> race this leg again · <kbd>K</kbd> postcard</div>');
 
+  if (game.gpuLost) return;
   resize();
   setLoad(1);
-  $('loadStatus').hidden = true;
+  $('loadStatus').hidden = !game.shoreError;
+  if (game.shoreError) {
+    $('loadStatus').textContent = 'Some coastal details did not load. Try again for the complete scene.';
+    $('retryLoad').hidden = false;
+  }
   $('title').querySelector('.bar').hidden = true;
   game.ready = true;
   $('title').classList.remove('loading');
@@ -233,6 +250,7 @@ function autoScale(rawDt) {
 }
 game.auto = auto;
 function frame(now) {
+  if (game.gpuLost) return;
   requestAnimationFrame(frame);
   if (game.capturing) return;
   const raw = (now - last) / 1000 || 0.016;
@@ -530,6 +548,7 @@ retireOldCache();
 $('retryLoad').addEventListener('click', async () => { await retireOldCache(); location.reload(); });
 boot().catch((e) => {
   console.error(e);
+  if (game.gpuLost) return;
   $('loadStatus').textContent = `Loading stopped. Check your connection and try again. (${e.message})`;
   $('retryLoad').hidden = false;
 });

@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Petalwake 图形诊断</title><style>body{background:#0b1420;color:#f8f4e9;font:16px/1.6 system-ui,sans-serif;padding:5vw}main{max-width:42rem;margin:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#1b2938;padding:16px;border-radius:12px}a,button{display:inline-block;margin:5px;padding:10px 18px;border:0;border-radius:20px;background:#ffd9e6;color:#251329;font:inherit;text-decoration:none}small{color:#bdcbd6}</style></head><body><main><h1>游戏图形诊断</h1><p>这只检查浏览器能力和关键文件，不会删除存档、自动上传信息或启动完整游戏。请截图结果发回来。</p><pre id="output">正在检查……</pre><button id="copy">复制结果</button><a href="./">返回游戏</a><p><small>诊断不能证明完整游戏一定稳定，也不能准确测量 iPhone 的可用显存。</small></p></main><script>
+(async()=>{
+ const lines=['Petalwake 诊断 v1', '浏览器: '+navigator.userAgent, `屏幕: ${innerWidth}×${innerHeight}, DPR ${devicePixelRatio}`];
+ try {
+  const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;const gl=canvas.getContext('webgl2',{antialias:false});
+  if(!gl) lines.push('WebGL 2: 不可用'); else {
+   const ext=!!gl.getExtension('EXT_color_buffer_float'), linear=!!gl.getExtension('OES_texture_float_linear');
+   lines.push('WebGL 2: 可用',`最大纹理尺寸: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`,`纹理数组最大层数: ${gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS)}`,`最大采样数: ${gl.getParameter(gl.MAX_SAMPLES)}`,`浮点渲染扩展: ${ext?'有':'无'}`,`浮点线性过滤扩展: ${linear?'有':'无'}`);
+   const tex=gl.createTexture(), fb=gl.createFramebuffer();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texStorage2D(gl.TEXTURE_2D,1,gl.RGBA16F,2,2);gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+   lines.push('半浮点 HDR 帧缓冲: '+(gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE?'可用':'不可用'));gl.deleteFramebuffer(fb);gl.deleteTexture(tex);
+  }
+ }catch(e){lines.push('图形检查异常: '+e.message)}
+ const paths=['assets/terrain/height.u16.gz','assets/town/larkhaven.bin.gz','assets/town/cairnwick.bin.gz','assets/town/fields.bin.gz','assets/terrain/light.png','assets/terrain/splat.png','assets/terrain/tint.png','assets/shore/shore.bin','assets/models/rider.glb'];
+ await Promise.all(paths.map(async path=>{const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),12000);try{const r=await fetch('./'+path,{method:'HEAD',signal:controller.signal});lines.push(`${path}: HTTP ${r.status}`)}catch(e){lines.push(`${path}: 连接失败 (${e.name})`)}finally{clearTimeout(timer)}}));
+ document.getElementById('output').textContent=lines.join('\n');
+})();
+document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('output').textContent);document.getElementById('copy').textContent='已复制'}catch(e){document.getElementById('copy').textContent='请截图结果'}};
+</script></body></html>

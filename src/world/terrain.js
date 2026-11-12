@@ -20,7 +20,7 @@ export async function loadImage(url) {
   return createImageBitmap(await loadBlob(url), { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
 }
 
-export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THREE.ClampToEdgeWrapping } = {}) {
+export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THREE.ClampToEdgeWrapping, releaseCPU = false } = {}) {
   const t = new THREE.Texture(img);
   t.flipY = false;
   t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -29,6 +29,9 @@ export function dataTex(img, { srgb = false, mips = true, aniso = 8, wrap = THRE
   t.magFilter = THREE.LinearFilter;
   t.wrapS = t.wrapT = wrap;
   t.anisotropy = aniso;
+  // Once uploaded, a static ImageBitmap is no longer needed by the GPU. A lost context is
+  // handled by asking for a reload, which reconstructs these original full-resolution assets.
+  if (releaseCPU && img.close) t.onUpdate = () => { img.close(); t.onUpdate = null; };
   t.needsUpdate = true;
   return t;
 }
@@ -45,7 +48,7 @@ function pixels(img, size) {
 }
 
 /** Stack material images into a texture array. */
-export async function materialArrays(base) {
+export async function materialArrays(base, { releaseCPU = false } = {}) {
   const meta = await loadJson(`${base}/materials.json`);
   const S = meta.size;
   const L = meta.order.length;
@@ -70,6 +73,9 @@ export async function materialArrays(base) {
     t.minFilter = THREE.LinearMipmapLinearFilter;
     t.magFilter = THREE.LinearFilter;
     t.anisotropy = 8;
+    // The arrays contain a second copy of GPU-resident, static textures (90 MiB total).
+    // Drop only the CPU copy after upload; reload the page if the GL context is lost.
+    if (releaseCPU) t.onUpdate = () => { t.image.data = null; t.onUpdate = null; };
     t.needsUpdate = true;
     return t;
   };
@@ -125,16 +131,16 @@ export class Terrain {
       () => loadImage(`${base}/terrain/splat.png`),
       () => loadImage(`${base}/terrain/light.png`),
       () => loadImage(`${base}/terrain/tint.png`),
-      () => materialArrays(`${base}/textures`),
+      () => materialArrays(`${base}/textures`, { releaseCPU: sequential }),
     ];
     const results = sequential ? [] : await Promise.all(jobs.map((job) => job()));
     if (sequential) for (const job of jobs) results.push(await job());
     const [buf, splatImg, lightImg, tintImg, mats] = results;
     if (buf.byteLength !== meta.n * meta.n * 2) throw new Error('Terrain height data is incomplete');
-    return new Terrain(renderer, meta, new Uint16Array(buf), splatImg, lightImg, tintImg, mats);
+    return new Terrain(renderer, meta, new Uint16Array(buf), splatImg, lightImg, tintImg, mats, sequential);
   }
 
-  constructor(renderer, meta, q, splatImg, lightImg, tintImg, mats) {
+  constructor(renderer, meta, q, splatImg, lightImg, tintImg, mats, releaseCPU = false) {
     this.meta = meta;
     const N = (this.N = meta.n);
     World.size = meta.world;
@@ -155,12 +161,12 @@ export class Terrain {
     ht.needsUpdate = true;
     this.heightTex = ht;
 
-    this.splatTex = dataTex(splatImg);
-    this.lightTex = dataTex(lightImg);
+    this.splatTex = dataTex(splatImg, { releaseCPU });
+    this.lightTex = dataTex(lightImg, { releaseCPU });
     this.splatN = splatImg.width;
     this.splat = pixels(splatImg);
 
-    this.tintTex = dataTex(tintImg, { srgb: true });
+    this.tintTex = dataTex(tintImg, { srgb: true, releaseCPU });
     U.uHeightTex.value = ht;
     U.uSplatTex.value = this.splatTex;
     U.uLightTex.value = this.lightTex;

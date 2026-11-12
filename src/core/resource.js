@@ -16,6 +16,7 @@ async function readWithRetry(url, read, attempts = 3) {
 }
 export const loadJson = (url) => readWithRetry(url, (r) => r.json());
 export const loadBlob = (url) => readWithRetry(url, (r) => r.blob());
+export const loadRawBinary = (url) => readWithRetry(url, (r) => r.arrayBuffer());
 export async function loadBinary(url) {
   if (typeof DecompressionStream === 'function') {
     try {
@@ -28,5 +29,5 @@ export async function loadBinary(url) {
       console.warn(`Compressed resource unavailable, trying original: ${url}`, error);
     }
   }
-  return readWithRetry(url, (r) => r.arrayBuffer());
+  return loadRawBinary(url);
 }

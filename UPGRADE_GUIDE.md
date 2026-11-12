@@ -44,3 +44,9 @@ python3 tools/serve.py 6280 0.0.0.0
 ```bash
 node tests/score-test.mjs
 ```
+
+### Mobile graphics troubleshooting
+
+The mobile build retains high meadow density, original texture sizes, shadow-map dimensions and the original lighting and post-processing. After static textures are uploaded, it releases their redundant CPU-side copies; if WebGL is lost, a retry notice asks for a page reload. Town and rider shadow maps keep their original depth precision and size but no longer allocate unused RGBA color attachments. These changes reduce memory pressure but cannot guarantee stability on every iOS/WebKit version or device.
+
+If the scene looks wrong or Safari reloads, open `diagnostics.html` on that device and share a screenshot of the results. The diagnostic runs locally and does not upload the results. If the optional shore kit cannot load after retries, the title screen warns that coastal details are missing.

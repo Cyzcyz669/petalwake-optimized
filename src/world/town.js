@@ -27,11 +27,11 @@ export class Town {
     const masks = await loadJson(`${base}/town/masks.json`);
     if (masks) await Promise.all(Object.keys(masks).slice(0, MAX_TOWNS).map(async (id, i) => {
       const m = masks[id];
-      U[`uTownMask${i}`].value = dataTex(await loadImage(`${base}/town/${m.file}`), { mips: true, aniso: 4 });
+      U[`uTownMask${i}`].value = dataTex(await loadImage(`${base}/town/${m.file}`), { mips: true, aniso: 4, releaseCPU: sequential });
       U[`uTownRect${i}`].value.set(m.x0, m.z0, 1 / m.w, 1 / m.h);
     }));
     if (!index || !index.towns.length) return town;
-    const [mats, tiles] = await Promise.all([materialArrays(`${base}/town/tex`), loadJson(`${base}/town/tex/materials.json`)]);
+    const [mats, tiles] = await Promise.all([materialArrays(`${base}/town/tex`, { releaseCPU: sequential }), loadJson(`${base}/town/tex/materials.json`)]);
     town._material(mats, tiles);
     const loadTown = async (t) => {
       const [meta, buf] = await Promise.all([loadJson(`${base}/town/${t.id}.json`), loadBinary(`${base}/town/${t.id}.bin`)]);
@@ -154,7 +154,7 @@ export class Town {
       const S = t.shadowSize;
       const depth = new THREE.DepthTexture(S, S, THREE.FloatType);
       depth.minFilter = depth.magFilter = THREE.NearestFilter;
-      const rt = new THREE.WebGLRenderTarget(S, S, { depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+      const rt = new THREE.WebGLRenderTarget(S, S, { format: THREE.RedFormat, depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
       const c = t.box.getCenter(new THREE.Vector3());
       const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 2);
       cam.position.copy(c).addScaledVector(sun, 600);

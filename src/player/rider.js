@@ -73,7 +73,7 @@ export class Rider {
     // ---- shadow map for the world shaders (depth from the sun's point of view)
     const depth = new THREE.DepthTexture(SHADOW_SIZE, SHADOW_SIZE, THREE.FloatType);
     depth.minFilter = depth.magFilter = THREE.LinearFilter;
-    this.shadowRT = new THREE.WebGLRenderTarget(SHADOW_SIZE, SHADOW_SIZE, { depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+    this.shadowRT = new THREE.WebGLRenderTarget(SHADOW_SIZE, SHADOW_SIZE, { format: THREE.RedFormat, depthTexture: depth, depthBuffer: true, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
     this.shadowCam = new THREE.OrthographicCamera(-SHADOW_EXTENT, SHADOW_EXTENT, SHADOW_EXTENT, -SHADOW_EXTENT, 1, 60);
     this.depthMat = new THREE.MeshBasicMaterial({ colorWrite: false });
     this.shadowScene = new THREE.Scene();

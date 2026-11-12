@@ -20,6 +20,7 @@
 // Draw calls: dressing, tide lines, crabs near, crabs far. The kit of meshes is modelled by
 // tools/shore/build_shore.py (Blender) into assets/shore/.
 import * as THREE from 'three';
+import { loadJson, loadRawBinary } from '../core/resource.js';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
@@ -164,8 +165,8 @@ class Pool {
 // ------------------------------------------------------------------------------------ the kit
 async function loadKit(base) {
   const [dir, bin] = await Promise.all([
-    fetch(`${base}/shore/shore.json`).then((r) => { if (!r.ok) throw new Error(`shore.json: ${r.status}`); return r.json(); }),
-    fetch(`${base}/shore/shore.bin`).then((r) => { if (!r.ok) throw new Error(`shore.bin: ${r.status}`); return r.arrayBuffer(); }),
+    loadJson(`${base}/shore/shore.json`),
+    loadRawBinary(`${base}/shore/shore.bin`),
   ]);
   const sec = (name, Ctor) => { const [o, n] = dir.sections[name]; return new Ctor(bin, o, n / Ctor.BYTES_PER_ELEMENT); };
   const S = { pos: sec('static.pos', Float32Array), nrm: sec('static.nrm', Int8Array), col: sec('static.col', Uint8Array), aux: sec('static.aux', Uint8Array), idx: sec('static.idx', Uint16Array) };
