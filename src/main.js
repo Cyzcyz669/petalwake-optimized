@@ -51,9 +51,9 @@ const game = {
 };
 window.PW = game;
 
-// phones and tablets: fewer pixels and a thinner meadow, unless asked otherwise (?dpr= ?q=)
+// Use the original high-quality defaults on every device; overrides remain available.
 const TOUCH = isTouch(params);
-let maxDpr = Number(params.get('dpr')) || (TOUCH ? 1.25 : 1.5);
+let maxDpr = Number(params.get('dpr')) || 1.5;
 function applyFov() {
   // hold the horizontal field of view on very wide screens instead of letting it balloon
   const baseV = game.fov, hLimit = 122;
@@ -98,16 +98,17 @@ async function boot() {
   U.uTownMask1.value = blank;
 
   setLoad(0.08, 'raising the island…');
-  const riderLoad = Rider.load(renderer);
-  const propsLoad = Props.load();
-  const townLoad = Town.load(renderer);
-  const terrain = (game.terrain = await Terrain.load(renderer));
+  // On touch devices, avoid decoding terrain, town and rider assets simultaneously.
+  const riderLoad = TOUCH ? null : Rider.load(renderer);
+  const propsLoad = TOUCH ? null : Props.load();
+  const townLoad = TOUCH ? null : Town.load(renderer);
+  const terrain = (game.terrain = await Terrain.load(renderer, './assets', { sequential: TOUCH }));
   terrain.mainView.mesh.renderOrder = 500;
   world.add(terrain.mainView.mesh);
   await tick();
 
   setLoad(0.4, 'sowing the meadows…');
-  const meadow = (game.meadow = new Meadow(terrain, params.get('q') || (TOUCH ? 'low' : 'high')));
+  const meadow = (game.meadow = new Meadow(terrain, params.get('q') || 'high'));
   world.add(meadow.group);
 
   const sky = (game.sky = new Sky());
@@ -128,11 +129,11 @@ async function boot() {
   world.add(river.group);
   water.material.uniforms.uFallBase.value.set(river.fall.base.x, river.fall.base.z, river.fall.hw * 1.6);
 
-  const props = (game.props = await propsLoad);
+  const props = (game.props = await (propsLoad || Props.load()));
   world.add(props.group);
   if (props.overlay) pipeline.overlay.add(props.overlay);
   // the towns: buildings, their landing pads, and what the broom bumps into
-  const town = (game.town = await townLoad);
+  const town = (game.town = await (townLoad || Town.load(renderer)));
   world.add(town.group);
   town.bakeShadows();
   // hidden places and their treasures (their models load later, as the rider comes near)
@@ -141,7 +142,7 @@ async function boot() {
   pipeline.overlay.add(places.overlay);
 
   setLoad(0.9, 'waking the broom…');
-  const rider = (game.rider = await riderLoad);
+  const rider = (game.rider = await (riderLoad || Rider.load(renderer)));
   pipeline.overlay.add(rider.group, rider.lights);
   pipeline.overlay.environment = sky.bakeEnvironment(renderer);
   const vortex = (game.vortex = new VortexWake(terrain));
@@ -211,7 +212,7 @@ let last = 0;
 // Adaptive resolution: if the machine cannot hold the frame rate, render fewer pixels rather than
 // drop frames; climb back when there is headroom. Steps are coarse and rare (each one reallocates).
 const SCALES = [1, 0.85, 0.72, 0.6, 0.5];
-const auto = { i: 0, acc: 0, n: 0, hold: 3, good: 0, on: !params.has('noscale') && !params.has('debug') };
+const auto = { i: 0, acc: 0, n: 0, hold: 3, good: 0, on: !params.has('noscale') && !params.has('debug') && (!TOUCH || params.has('autoscale')) };
 function autoScale(rawDt) {
   if (!auto.on || rawDt > 0.25) return;          // ignore hitches (tab switches, loading)
   auto.acc += rawDt; auto.n++;

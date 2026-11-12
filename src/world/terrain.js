@@ -39,7 +39,10 @@ function pixels(img, size) {
   c.width = c.height = size || img.width;
   const g = c.getContext('2d', { willReadFrequently: true });
   g.drawImage(img, 0, 0, c.width, c.height);
-  return g.getImageData(0, 0, c.width, c.height).data;
+  const data = g.getImageData(0, 0, c.width, c.height).data;
+  // Release the temporary canvas backing store immediately (important on mobile Safari).
+  c.width = c.height = 1;
+  return data;
 }
 
 /** Stack material images into a texture array. */
@@ -49,11 +52,15 @@ export async function materialArrays(base) {
   const L = meta.order.length;
   const col = new Uint8Array(S * S * 4 * L);
   const nrm = new Uint8Array(S * S * 4 * L);
-  await Promise.all(meta.order.map(async (name, i) => {
-    const [c, n] = await Promise.all([loadImage(`${base}/${name}_c.webp`), loadImage(`${base}/${name}_n.webp`)]);
-    col.set(pixels(c, S), i * S * S * 4);
-    nrm.set(pixels(n, S), i * S * S * 4);
-  }));
+  // Decode one texture pair at a time; this keeps exactly the same pixels and mipmaps while
+  // avoiding dozens of decoded ImageBitmaps and canvas backing stores alive at once on iOS.
+  for (let i = 0; i < meta.order.length; i++) {
+    const name = meta.order[i];
+    const c = await loadImage(`${base}/${name}_c.webp`);
+    try { col.set(pixels(c, S), i * S * S * 4); } finally { c.close?.(); }
+    const n = await loadImage(`${base}/${name}_n.webp`);
+    try { nrm.set(pixels(n, S), i * S * S * 4); } finally { n.close?.(); }
+  }
   const mk = (data, srgb) => {
     const t = new THREE.DataArrayTexture(data, S, S, L);
     t.format = THREE.RGBAFormat;
@@ -112,15 +119,18 @@ export function makeNoiseTexture() {
 }
 
 export class Terrain {
-  static async load(renderer, base = './assets') {
+  static async load(renderer, base = './assets', { sequential = false } = {}) {
     const meta = await (await fetch(`${base}/terrain/meta.json`)).json();
-    const [buf, splatImg, lightImg, tintImg, mats] = await Promise.all([
-      fetch(`${base}/terrain/height.u16`).then((r) => r.arrayBuffer()),
-      loadImage(`${base}/terrain/splat.png`),
-      loadImage(`${base}/terrain/light.png`),
-      loadImage(`${base}/terrain/tint.png`),
-      materialArrays(`${base}/textures`),
-    ]);
+    const jobs = [
+      () => fetch(`${base}/terrain/height.u16`).then((r) => { if (!r.ok) throw new Error(`height.u16: ${r.status}`); return r.arrayBuffer(); }),
+      () => loadImage(`${base}/terrain/splat.png`),
+      () => loadImage(`${base}/terrain/light.png`),
+      () => loadImage(`${base}/terrain/tint.png`),
+      () => materialArrays(`${base}/textures`),
+    ];
+    const results = sequential ? [] : await Promise.all(jobs.map((job) => job()));
+    if (sequential) for (const job of jobs) results.push(await job());
+    const [buf, splatImg, lightImg, tintImg, mats] = results;
     return new Terrain(renderer, meta, new Uint16Array(buf), splatImg, lightImg, tintImg, mats);
   }
 

@@ -107,6 +107,7 @@ export class Strip {
     this.n = Math.round(World.size / CELL);
     this.grid = new Uint8Array(this.n * this.n);
     this._stamp = 0;
+    this._mipT = 0.25;  // first stamp builds every mip level
   }
 
   /** Share of the petals already gone at a point: 0 untouched .. 1 none left. */
@@ -142,13 +143,17 @@ export class Strip {
   /** Call after the vortex simulation has stepped. */
   update(dt) {
     const V = this.vortex, r = this.renderer;
-    // ---- the map: at most sixty stamps a second (each one regenerates the map's mipmaps)
+    // Keep full-resolution stamps, but rebuild the 4096² mip chain at most four times a second.
+    // The base image is updated every frame; distant mip levels can lag by at most 0.25 s.
+    this._mipT += dt;
     this._stamp += dt;
     if (this._stamp >= 1 / 60) {
       this._stamp = 0;
       if (V.ribbon.drawRange.count > 0) {
         const keepAuto = r.autoClear;
         r.autoClear = false;                     // this map accumulates
+        this.rt.texture.mipmapsAutoUpdate = this._mipT >= 0.25;
+        if (this.rt.texture.mipmapsAutoUpdate) this._mipT = 0;
         r.setRenderTarget(this.rt);
         r.render(this.scene, this.cam);
         r.setRenderTarget(null);

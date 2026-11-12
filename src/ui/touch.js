@@ -164,6 +164,10 @@ export class TouchControls {
   begin() {
     if (!this.on) return;
     this.root.hidden = false;
+    // iOS Safari and embedded Safari views do not reliably support element fullscreen.
+    // Stay in the existing viewport instead of changing display mode during takeoff.
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) return;
     const d = document.documentElement;
     const fs = d.requestFullscreen || d.webkitRequestFullscreen;
     try { fs?.call(d, { navigationUI: 'hide' })?.then?.(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch?.(() => {}); } catch { /* not allowed here */ }

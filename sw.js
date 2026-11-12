@@ -1,7 +1,7 @@
 // Keeps a copy of the island on the device. The heavy, rarely changed files (assets/, vendor/) are
 // served from the copy once fetched; the code and the page are fetched fresh when there is a
 // network and from the copy when there is not. Bump VERSION when the assets change.
-const VERSION = 'v2-1';
+const VERSION = 'v2-2';
 const HEAVY = `petalwake-assets-${VERSION}`, CODE = `petalwake-code-${VERSION}`;
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -26,7 +26,10 @@ async function heavy(req) {
   const hit = await cache.match(req, { ignoreSearch: true });
   if (hit) return hit;
   const res = await fetch(req);
-  if (res.ok && res.status === 200) cache.put(req, res.clone()).catch(() => {});
+  // A cloned large response can be buffered twice while the game consumes it.
+  // Only cache known-small assets; leave very large or unknown-size responses un-cloned.
+  const bytes = Number(res.headers.get('content-length'));
+  if (res.ok && res.status === 200 && bytes > 0 && bytes <= 8 * 1024 * 1024) cache.put(req, res.clone()).catch(() => {});
   return res;
 }
 
