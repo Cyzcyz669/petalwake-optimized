@@ -20,7 +20,7 @@
 // Draw calls: dressing, tide lines, crabs near, crabs far. The kit of meshes is modelled by
 // tools/shore/build_shore.py (Blender) into assets/shore/.
 import * as THREE from 'three';
-import { loadJson, loadRawBinary } from '../core/resource.js';
+import { loadJson, loadRawBinary } from '../core/resource.js?v=20261112b';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';

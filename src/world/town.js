@@ -8,11 +8,11 @@
 // It also answers two questions for the rest of the game: where the rider can land (pads), and how
 // high the roofs are at a point (heightAt), which is what the broom collides with.
 import * as THREE from 'three';
-import { loadBinary, loadJson } from '../core/resource.js';
+import { loadBinary, loadJson } from '../core/resource.js?v=20261112b';
 import { U, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, WIND, SHADOW, TOWN_SHADOW } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
-import { materialArrays, loadImage, dataTex } from './terrain.js';
+import { materialArrays, loadImage, dataTex } from './terrain.js?v=20261112b';
 import { SPR } from '../fx/particles.js';
 import { waveHeight } from './water.js';
 

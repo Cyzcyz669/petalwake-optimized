@@ -2,14 +2,14 @@
 import * as THREE from 'three';
 import { U, World, applyEnv } from './core/ctx.js';
 import { Pipeline } from './core/pipeline.js';
-import { Terrain, makeNoiseTexture } from './world/terrain.js';
+import { Terrain, makeNoiseTexture } from './world/terrain.js?v=20261112b';
 import { Sky } from './world/sky.js';
 import { Water } from './world/water.js';
 import { CloudBaker } from './world/clouds.js';
 import { Meadow } from './world/meadow.js';
 import { Input } from './player/input.js';
 import { Flight, SPEEDS } from './player/flight.js';
-import { Rider } from './player/rider.js';
+import { Rider } from './player/rider.js?v=20261112b';
 import { ChaseCamera } from './player/camera.js';
 import { Wake } from './fx/wake.js';
 import { VortexWake } from './fx/vortex.js';
@@ -18,7 +18,7 @@ import { WindFX } from './fx/windfx.js';
 import { Seeds } from './world/seeds.js';
 import { River } from './world/river.js';
 import { Props } from './world/props.js';
-import { Town } from './world/town.js';
+import { Town } from './world/town.js?v=20261112b';
 import { Places } from './world/places.js';
 import { Sound } from './audio/audio.js';
 import { Gameplay } from './game/index.js';
@@ -168,7 +168,7 @@ async function boot() {
   pipeline.overlay.add(fx.group);
   // the shore: tide lines, what clings to the rocks, and the crabs. Decoration only, so it is loaded
   // on its own: if the module or its assets fail, the game goes on without it.
-  const shore = (game.shore = await import('./world/shore.js').then((m) => m.Shore.load(renderer, terrain)).catch((e) => (console.error(e), game.shoreError = e, null)));
+  const shore = (game.shore = await import('./world/shore.js?v=20261112b').then((m) => m.Shore.load(renderer, terrain)).catch((e) => (console.error(e), game.shoreError = e, null)));
   if (shore) world.add(shore.attach({ camera, fx, water, town, overlay: pipeline.overlay }).group);
   const seeds = (game.seeds = new Seeds(terrain, terrain.meta));
   pipeline.overlay.add(seeds.group);

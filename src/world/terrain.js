@@ -1,6 +1,6 @@
 // Terrain: baked heightfield + CDLOD quadtree mesh + the material that paints meadow, cliff, beach.
 import * as THREE from 'three';
-import { loadBinary, loadBlob, loadJson } from '../core/resource.js';
+import { loadBinary, loadBlob, loadJson } from '../core/resource.js?v=20261112b';
 import { U, World, shared } from '../core/ctx.js';
 import { NOISE, NOISE_TEX, ATMOSPHERE, CLOUD_SHADOW, TERRAIN_LOOKUP, MEADOW, SHADOW, STRIP, TOWN_SHADOW, TOWN_MASK } from '../shaders/common.js';
 import { SKY_UNIFORMS } from './sky.js';
