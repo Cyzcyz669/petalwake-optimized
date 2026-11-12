@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1420">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Petalwake">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Petalwake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Karla:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/ui/style.css">
+<link rel="stylesheet" href="./src/ui/journal.css">
+<link rel="stylesheet" href="./src/ui/extras.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="hud" hidden>
+  <div class="hud-tl">
+    <div class="seeds"><span class="seeds-icon"></span><span id="seedCount">0</span><span class="seeds-of">/ <span id="seedTotal">0</span></span>
+      <span class="compass" id="compass" title="nearest wind seed"><svg viewBox="-12 -12 24 24" width="22" height="22"><path d="M0 -9 L5 6 L0 3 L-5 6 Z" fill="currentColor"/></svg><span id="seedDist"></span></span>
+    </div>
+    <div class="run"><span id="runPts">0</span><small>score</small></div>
+    <div class="place" id="place"></div>
+  </div>
+  <div class="hud-bl">
+    <div class="gust"><div class="gust-fill" id="gustFill"></div></div>
+    <div class="gust-label">gust</div>
+    <div class="trick" id="trick" hidden><kbd>Q</kbd>kickflip</div>
+  </div>
+  <div class="hud-br"><span id="speed">0</span><small>km/h</small></div>
+  <div class="hud-tr" id="job" hidden>
+    <div class="job-kicker"><span class="job-icon"></span>parcel for</div>
+    <div class="job-name"><span id="jobName"></span><span class="job-spot" id="jobSpot"></span></div>
+    <div class="job-meta"><span class="compass" id="jobCompass" title="where the parcel is going"><svg viewBox="-12 -12 24 24" width="22" height="22"><path d="M0 -9 L5 6 L0 3 L-5 6 Z" fill="currentColor"/></svg><span id="jobDist"></span></span><span class="job-count"><span id="jobCount">0</span> delivered</span></div>
+    <div class="job-story" id="jobStory"></div>
+    <div class="job-clock"><span class="job-time" id="jobTime">–:–</span><span class="job-par" id="jobPar"></span></div>
+  </div>
+  <div class="flow" id="flow"><div class="flow-top"><span class="flow-label" id="flowLabel"></span><span class="flow-mult" id="flowMult">×1</span></div><div class="flow-pts" id="flowPts">0</div><div class="flow-heat"><div id="flowHeat"></div></div></div>
+  <div class="prompt" id="prompt"></div>
+  <div class="card" id="card"><div class="card-kicker" id="cardKicker"></div><div class="card-name" id="cardName"></div><div class="card-sub" id="cardSub"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<div id="title">
+  <div class="title-inner">
+    <p class="kicker">a broom, an island, a good wind</p>
+    <h1>Petalwake</h1>
+    <div class="bar"><div class="bar-fill" id="loadFill"></div></div>
+    <p class="status" id="loadStatus">gathering the wind…</p>
+    <button id="start" hidden>Take off</button>
+    <div class="records" id="records" hidden></div>
+    <div class="keys" id="keys" hidden>
+      <div><kbd>W</kbd><kbd>S</kbd> dive · climb</div>
+      <div><kbd>A</kbd><kbd>D</kbd> bank</div>
+      <div><kbd>Shift</kbd> ride the gust</div>
+      <div><kbd>Space</kbd> ease up</div>
+      <div><kbd>Mouse</kbd> steer · <kbd>C</kbd> camera · <kbd>I</kbd> invert pitch</div>
+      <div><kbd>P</kbd> hide HUD · <kbd>M</kbd> mute · <kbd>J</kbd> journal</div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const temp=fs.mkdtempSync(path.join(os.tmpdir(), 'petalwake-test-'));
+const scorePath=path.join(temp, 'score.mjs');
+const source=fs.readFileSync(root+'/src/game/score.js','utf8').replace("from 'three'", `from '${pathToFileURL(root + '/vendor/three/build/three.module.js').href}'`);
+fs.writeFileSync(scorePath,source);
+const {Score, fmtTime}=await import(pathToFileURL(scorePath).href);
+const {resident,parcel}=await import(pathToFileURL(root + '/src/game/stories.js').href);
+globalThis.document={getElementById:()=>null};
+const db={}; const store={get:(k,d)=>db[k]??d,set:(k,v)=>{db[k]=structuredClone(v)}};
+const overlay={children:[],add(o){this.children.push(o)}};
+const a={id:'a',name:'Gate',pos:{x:0,y:20,z:0}},b={id:'b',name:'Mill',pos:{x:400,y:20,z:0}};
+const game={state:'play', pipeline:{overlay}, seeds:{count:0},places:{count:0}, flight:{pos:{x:0,y:22,z:0},agl:2,speed:35,roll:0,bump:0,yaw:0},terrain:{heightAt:()=>0}, input:{take:()=>false},toast:()=>{},fly:(...args)=>{game.lastFly=args},gameplay:{landing:{state:'fly',busy:false},trick:{count:0},courier:{setTarget:(to,from)=>{game.score.newLeg(from,to)}}}};
+const score=new Score(game,store,{}); assert.equal(overlay.children.length,1); assert.equal(fmtTime(65.2),'1:05.2');
+assert.deepEqual(resident(b),resident(b)); assert.deepEqual(parcel(b,7),parcel(b,7));
+score.newLeg(a,b); assert.equal(score.leg.par,18); for(let i=0;i<100;i++) score.update(.1); assert.equal(Math.round(score.leg.t),10); assert(score.chain>0);
+let outcome=score.delivered(b); assert.equal(outcome.medal,'gold'); assert.equal(db['stats.v1'].delivered,1); assert(db['ghosts.v1']['a>b'].p.length>3); assert(db['routes.v1']['a>b']===10);
+score.newLeg(b,a); score.rerun(); assert.equal(score.leg.key,'a>b'); assert(game.lastFly); assert(score.ghost.data); score.update(.1); assert.equal(score.ghost.group.visible,true);
+game.flight.bump=1; score.chain=100; const before=score.run; score.update(.1); assert.equal(score.run,before+50);
+console.log('PASS: deterministic stories, flow, timer, medal, records, ghost, rerun, bump penalty');
+
+fs.rmSync(temp, {recursive:true, force:true});
